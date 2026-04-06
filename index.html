@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NextFeed</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #0f172a;
+  color: #fff;
+  text-align: center;
+}
+
+/* タイトル */
+h1 {
+  margin: 20px 0;
+}
+
+/* スライダー */
+.slider-container {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.slider {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  width: 100%;
+}
+
+/* スクロールバー消す */
+.slider::-webkit-scrollbar {
+  display: none;
+}
+
+.slider iframe {
+  min-width: 300px;
+  height: 533px;
+  margin: 10px;
+  border-radius: 12px;
+  border: none;
+}
+
+/* ボタン */
+button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.6);
+  border: none;
+  color: white;
+  font-size: 20px;
+  padding: 10px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+#prev { left: 0; }
+#next { right: 0; }
+
+/* スマホ */
+@media (max-width: 600px) {
+  .slider iframe {
+    min-width: 80vw;
+    height: 140vw;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<h1>NextFeed</h1>
+
+<div class="slider-container">
+  <button id="prev">◀</button>
+
+  <div class="slider" id="slider"></div>
+
+  <button id="next">▶</button>
+</div>
+
+<script>
+const videos = [
+  "qsvIayfSZTw",
+  "vfHsV95ZUdE"
+];
+
+// 動画追加
+const slider = document.getElementById("slider");
+
+videos.forEach(id => {
+  const iframe = document.createElement("iframe");
+  iframe.src = `https://www.youtube.com/embed/${id}`;
+  iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
+  slider.appendChild(iframe);
+});
+
+// ボタン操作
+document.getElementById("next").onclick = () => {
+  slider.scrollBy({ left: 320, behavior: "smooth" });
+};
+
+document.getElementById("prev").onclick = () => {
+  slider.scrollBy({ left: -320, behavior: "smooth" });
+};
+</script>
+
+</body>
+</html>
