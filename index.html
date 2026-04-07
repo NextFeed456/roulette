@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NextFeed</title>
+<title>ルーレットツール｜NextFeed</title>
 
 <style>
 body {
@@ -14,108 +14,144 @@ body {
   text-align: center;
 }
 
-/* タイトル */
-h1 {
-  margin: 20px 0;
+.container {
+  padding: 20px;
 }
 
-/* スライダー */
-.slider-container {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  position: relative;
-}
-
-.slider {
-  display: flex;
-  overflow-x: auto;
-  scroll-behavior: smooth;
-  width: 100%;
-}
-
-/* スクロールバー消す */
-.slider::-webkit-scrollbar {
-  display: none;
-}
-
-.slider iframe {
-  min-width: 300px;
-  height: 533px;
-  margin: 10px;
-  border-radius: 12px;
-  border: none;
-}
-
-/* ボタン */
-button {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0,0,0,0.6);
-  border: none;
-  color: white;
-  font-size: 20px;
+textarea {
+  width: 90%;
+  height: 120px;
+  border-radius: 8px;
   padding: 10px;
-  cursor: pointer;
-  z-index: 10;
+  border: none;
 }
 
-#prev { left: 0; }
-#next { right: 0; }
+button {
+  margin-top: 15px;
+  padding: 12px 20px;
+  font-size: 18px;
+  background: #22c55e;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
 
-/* スマホ */
-@media (max-width: 600px) {
-  .slider iframe {
-    min-width: 80vw;
-    height: 140vw;
-  }
+canvas {
+  margin-top: 20px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+}
+
+#result {
+  margin-top: 20px;
+  font-size: 24px;
+  font-weight: bold;
 }
 </style>
 </head>
 
 <body>
 
-<h1>NextFeed</h1>
+<div class="container">
 
-<div class="slider-container">
-  <button id="prev">◀</button>
+<h2>ルーレットツール</h2>
 
-  <div class="slider" id="slider"></div>
+<textarea id="items" placeholder="改行で項目を入力"></textarea>
 
-  <button id="next">▶</button>
+<br>
+<button onclick="startRoulette()">START</button>
+
+<br>
+<input type="file" id="bgUpload" accept="image/*">
+
+<br>
+<canvas id="wheel" width="300" height="300"></canvas>
+
+<div id="result"></div>
+
 </div>
 
+<!-- 音 -->
+<audio id="rollSound" src="https://www.soundjay.com/misc/sounds/drum-roll-1.mp3"></audio>
+<audio id="hitSound" src="https://www.soundjay.com/button/sounds/button-3.mp3"></audio>
+
 <script>
-const videos = [
-  "qsvIayfSZTw",
-  "vfHsV95ZUdE",
-  "3Jmz9fhpOBY",
-  "w4Um1RCZ4_8",
-  "wVyVSsjDyk8",
-  "JDlwf7-0mYk",
-  "iCQ2eX3KZhQ",
-  "SMASWupYc5Q"
-];
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
 
-// 動画追加
-const slider = document.getElementById("slider");
+let items = [];
+let angle = 0;
+let spinning = false;
 
-videos.forEach(id => {
-  const iframe = document.createElement("iframe");
-  iframe.src = `https://www.youtube.com/embed/${id}`;
-  iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
-  slider.appendChild(iframe);
+function drawWheel() {
+  if(items.length === 0) return;
+
+  const arc = 2 * Math.PI / items.length;
+
+  for(let i=0;i<items.length;i++){
+    ctx.beginPath();
+    ctx.fillStyle = `hsl(${i * 360 / items.length}, 70%, 50%)`;
+    ctx.moveTo(150,150);
+    ctx.arc(150,150,150, i*arc + angle, (i+1)*arc + angle);
+    ctx.fill();
+
+    ctx.fillStyle = "#fff";
+    ctx.save();
+    ctx.translate(150,150);
+    ctx.rotate(i*arc + arc/2 + angle);
+    ctx.fillText(items[i], 80, 5);
+    ctx.restore();
+  }
+}
+
+function startRoulette() {
+  if(spinning) return;
+
+  items = document.getElementById("items").value.split("\n").filter(v=>v);
+  if(items.length === 0) return alert("項目を入力してください");
+
+  spinning = true;
+
+  const rollSound = document.getElementById("rollSound");
+  const hitSound = document.getElementById("hitSound");
+
+  rollSound.currentTime = 0;
+  rollSound.play();
+
+  let speed = Math.random() * 0.3 + 0.3;
+
+  function spin() {
+    angle += speed;
+    speed *= 0.98;
+
+    ctx.clearRect(0,0,300,300);
+    drawWheel();
+
+    if(speed > 0.002){
+      requestAnimationFrame(spin);
+    } else {
+      spinning = false;
+      rollSound.pause();
+      hitSound.play();
+
+      const index = Math.floor((items.length - (angle / (2*Math.PI)) * items.length) % items.length);
+      document.getElementById("result").innerText = "結果：" + items[index];
+    }
+  }
+
+  spin();
+}
+
+// 背景画像アップロード
+document.getElementById("bgUpload").addEventListener("change", function(e){
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = function(){
+    canvas.style.backgroundImage = `url(${reader.result})`;
+  };
+  reader.readAsDataURL(file);
 });
-
-// ボタン操作
-document.getElementById("next").onclick = () => {
-  slider.scrollBy({ left: 320, behavior: "smooth" });
-};
-
-document.getElementById("prev").onclick = () => {
-  slider.scrollBy({ left: -320, behavior: "smooth" });
-};
 </script>
 
 </body>
