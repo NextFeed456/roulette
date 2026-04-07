@@ -7,14 +7,19 @@
 <style>
 body {
   margin: 0;
-  background: transparent; /* ← OBS透過 */
+  background: #0f172a; /* 通常背景 */
   color: white;
   text-align: center;
   font-family: sans-serif;
 }
 
+/* OBS透過エリア */
 #wrapper {
+  display: inline-block;
   margin-top: 20px;
+  padding: 20px;
+  background: #00ff00; /* クロマキー用（黄緑） */
+  position: relative;
 }
 
 canvas {
@@ -22,10 +27,20 @@ canvas {
   margin: auto;
 }
 
-.controls {
-  margin-bottom: 10px;
+/* 左針 */
+.pointer {
+  position: absolute;
+  top: 50%;
+  left: -20px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 15px solid transparent;
+  border-bottom: 15px solid transparent;
+  border-right: 30px solid red;
 }
 
+/* ボタン */
 button {
   padding: 10px 20px;
   margin: 5px;
@@ -35,31 +50,32 @@ button {
   cursor: pointer;
 }
 
-/* 針 */
-.pointer {
-  position: absolute;
-  top: 50%;
-  right: -20px;
-  transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-top: 15px solid transparent;
-  border-bottom: 15px solid transparent;
-  border-left: 30px solid red;
-}
-
-/* 結果表示 */
+/* 結果 */
 .resultBox {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.8);
+  border: 2px solid white;
   padding: 15px 30px;
   border-radius: 12px;
-  border: 2px solid white;
   font-size: 24px;
   display: none;
+}
+
+/* 入力欄 */
+textarea {
+  width: 80%;
+  height: 100px;
+  margin-top: 20px;
+}
+
+/* 説明 */
+.desc {
+  margin-top: 10px;
+  font-size: 14px;
+  opacity: 0.85;
 }
 </style>
 </head>
@@ -68,18 +84,34 @@ button {
 
 <h2>ルーレットツール</h2>
 
-<div class="controls">
+<p class="desc">
+改行で項目を入力するとリアルタイムでルーレットに反映されます。<br>
+配信・企画・罰ゲームなどにご利用ください。
+</p>
+
+<div>
   <button onclick="startRoulette()">START</button>
   <button onclick="toggleMute()" id="muteBtn">🔊</button>
 </div>
 
-<div id="wrapper" style="position:relative; display:inline-block;">
+<!-- OBS透過エリア -->
+<div id="wrapper">
+
   <canvas id="wheel" width="500" height="500"></canvas>
+
+  <!-- 左針 -->
   <div class="pointer"></div>
-  <div class="resultBox" id="resultBox"></div>
+
+  <!-- 結果 -->
+  <div id="resultBox" class="resultBox"></div>
+
 </div>
 
-<textarea id="items" placeholder="改行で入力" style="width:80%; height:100px;"></textarea>
+<p class="desc">
+※完全ランダムのため結果に偏りが出る場合があります。
+</p>
+
+<textarea id="items" placeholder="改行で入力"></textarea>
 
 <audio id="rollSound" src="roll.mp3"></audio>
 <audio id="hitSound" src="finish.mp3"></audio>
@@ -98,7 +130,6 @@ const hitSound = document.getElementById("hitSound");
 const resultBox = document.getElementById("resultBox");
 const muteBtn = document.getElementById("muteBtn");
 
-// 音量
 rollSound.volume = 0.5;
 hitSound.volume = 0.5;
 
@@ -113,7 +144,7 @@ function drawEmpty(){
   ctx.fill();
 }
 
-// 入力連動
+// 入力で反映
 document.getElementById("items").addEventListener("input", () => {
   items = document.getElementById("items").value.split("\n").filter(v=>v);
   drawWheel();
@@ -182,9 +213,9 @@ function startRoulette(){
         hitSound.play().catch(()=>{});
       }
 
-      // ★右針完全一致ロジック
+      // ★左針対応
       const arc = 2*Math.PI / items.length;
-      const adjusted = (angle) % (2*Math.PI);
+      const adjusted = (angle + Math.PI) % (2*Math.PI);
       const index = Math.floor(
         ( (2*Math.PI - adjusted) / arc )
       ) % items.length;
