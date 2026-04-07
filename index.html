@@ -2,50 +2,39 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ルーレットツール｜NextFeed</title>
+<title>ルーレットツール</title>
 
 <style>
 body {
-  margin: 0;
-  font-family: sans-serif;
   background: #0f172a;
-  color: #fff;
+  color: white;
   text-align: center;
-}
-
-textarea {
-  width: 90%;
-  height: 120px;
-  border-radius: 8px;
-  padding: 10px;
-  border: none;
-}
-
-button {
-  margin-top: 10px;
-  padding: 12px 20px;
-  font-size: 18px;
-  background: #22c55e;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-#wheelWrapper {
-  position: relative;
-  display: inline-block;
-  margin-top: 20px;
+  font-family: sans-serif;
 }
 
 canvas {
-  border-radius: 50%;
+  margin-top: 20px;
 }
 
-#result {
+button {
+  padding: 10px 20px;
+  margin: 10px;
+  background: #22c55e;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+textarea {
+  width: 80%;
+  height: 100px;
   margin-top: 20px;
-  font-size: 28px;
-  font-weight: bold;
+}
+
+.note {
+  margin-top: 10px;
+  font-size: 14px;
+  opacity: 0.8;
 }
 </style>
 </head>
@@ -54,36 +43,40 @@ canvas {
 
 <h2>ルーレットツール</h2>
 
-<textarea id="items" placeholder="改行で項目を入力"></textarea>
+<p class="note">
+項目を入力すると自動でルーレットに反映されます。<br>
+配信や企画のランダム決定にご利用ください。
+</p>
 
-<br>
 <button onclick="startRoulette()">START</button>
 <button onclick="toggleMute()">🔊 ミュート</button>
 
-<br>
-<input type="file" id="bgUpload" accept="image/*">
+<div style="position: relative; display: inline-block;">
 
-<div id="wheelWrapper">
-
-  <!-- ルーレット -->
   <canvas id="wheel" width="500" height="500"></canvas>
 
-  <!-- 針（右） -->
+  <!-- 右の針 -->
   <div style="
     position: absolute;
     top: 50%;
-    right: -15px;
-    transform: translateY(-50%) rotate(90deg);
+    right: -20px;
+    transform: translateY(-50%);
     width: 0;
     height: 0;
-    border-left: 15px solid transparent;
-    border-right: 15px solid transparent;
-    border-bottom: 25px solid red;
+    border-top: 15px solid transparent;
+    border-bottom: 15px solid transparent;
+    border-left: 30px solid red;
   "></div>
 
 </div>
 
 <div id="result"></div>
+
+<p class="note">
+※結果はランダムであり、偏りが出る場合があります。
+</p>
+
+<textarea id="items" placeholder="改行で入力"></textarea>
 
 <audio id="rollSound" src="roll.mp3"></audio>
 <audio id="hitSound" src="finish.mp3"></audio>
@@ -97,21 +90,34 @@ let angle = 0;
 let spinning = false;
 let muted = false;
 
-// 音量設定
 const rollSound = document.getElementById("rollSound");
 const hitSound = document.getElementById("hitSound");
 
 rollSound.volume = 0.5;
 hitSound.volume = 0.5;
 
-// 入力と同時に更新
+// 初期表示（無色）
+function drawEmpty() {
+  ctx.clearRect(0,0,500,500);
+  ctx.beginPath();
+  ctx.fillStyle = "#1e293b";
+  ctx.arc(250,250,250,0,Math.PI*2);
+  ctx.fill();
+}
+
+drawEmpty();
+
+// 入力で即反映
 document.getElementById("items").addEventListener("input", () => {
   items = document.getElementById("items").value.split("\n").filter(v=>v);
   drawWheel();
 });
 
 function drawWheel() {
-  if(items.length === 0) return;
+  if(items.length === 0){
+    drawEmpty();
+    return;
+  }
 
   ctx.clearRect(0,0,500,500);
 
@@ -126,14 +132,14 @@ function drawWheel() {
 
     ctx.fillStyle = "#000";
     ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3;
 
     ctx.save();
     ctx.translate(250,250);
     ctx.rotate(i*arc + arc/2 + angle);
 
-    ctx.strokeText(items[i], 150, 5);
-    ctx.fillText(items[i], 150, 5);
+    ctx.strokeText(items[i], 160, 5);
+    ctx.fillText(items[i], 160, 5);
 
     ctx.restore();
   }
@@ -150,7 +156,7 @@ function startRoulette() {
     rollSound.play();
   }
 
-  let speed = Math.random() * 0.5 + 0.6;
+  let speed = Math.random() * 0.6 + 0.6;
 
   function spin() {
     angle += speed;
@@ -162,12 +168,14 @@ function startRoulette() {
       requestAnimationFrame(spin);
     } else {
       spinning = false;
-
       rollSound.pause();
       if(!muted) hitSound.play();
 
-      const normalized = (angle + Math.PI / 2) % (2 * Math.PI);
-      const index = Math.floor((items.length - (normalized / (2*Math.PI)) * items.length) % items.length);
+      // ★ここがズレ修正の本体
+      const adjusted = (angle) % (2*Math.PI);
+      const index = Math.floor(
+        ((2*Math.PI - adjusted) / (2*Math.PI)) * items.length
+      ) % items.length;
 
       document.getElementById("result").innerText = "結果：" + items[index];
     }
@@ -176,28 +184,9 @@ function startRoulette() {
   spin();
 }
 
-// ミュート切り替え
 function toggleMute(){
   muted = !muted;
-  document.querySelector("button[onclick='toggleMute()']").innerText = muted ? "🔇 ミュート中" : "🔊 ミュート";
 }
-
-// 背景画像（ちゃんと描画する）
-document.getElementById("bgUpload").addEventListener("change", function(e){
-  const file = e.target.files[0];
-  const reader = new FileReader();
-
-  reader.onload = function(){
-    const img = new Image();
-    img.onload = function(){
-      ctx.drawImage(img, 0, 0, 500, 500);
-      drawWheel();
-    }
-    img.src = reader.result;
-  };
-
-  reader.readAsDataURL(file);
-});
 </script>
 
 </body>
