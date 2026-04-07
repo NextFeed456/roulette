@@ -6,35 +6,60 @@
 
 <style>
 body {
-  background: #0f172a;
+  margin: 0;
+  background: transparent; /* ← OBS透過 */
   color: white;
   text-align: center;
   font-family: sans-serif;
 }
 
-canvas {
+#wrapper {
   margin-top: 20px;
+}
+
+canvas {
+  display: block;
+  margin: auto;
+}
+
+.controls {
+  margin-bottom: 10px;
 }
 
 button {
   padding: 10px 20px;
-  margin: 10px;
+  margin: 5px;
   background: #22c55e;
   border: none;
   border-radius: 6px;
   cursor: pointer;
 }
 
-textarea {
-  width: 80%;
-  height: 100px;
-  margin-top: 20px;
+/* 針 */
+.pointer {
+  position: absolute;
+  top: 50%;
+  right: -20px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 15px solid transparent;
+  border-bottom: 15px solid transparent;
+  border-left: 30px solid red;
 }
 
-.note {
-  margin-top: 10px;
-  font-size: 14px;
-  opacity: 0.8;
+/* 結果表示 */
+.resultBox {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.7);
+  padding: 15px 30px;
+  border-radius: 12px;
+  border: 2px solid white;
+  font-size: 24px;
+  display: none;
 }
 </style>
 </head>
@@ -43,40 +68,18 @@ textarea {
 
 <h2>ルーレットツール</h2>
 
-<p class="note">
-項目を入力すると自動でルーレットに反映されます。<br>
-配信や企画のランダム決定にご利用ください。
-</p>
-
-<button onclick="startRoulette()">START</button>
-<button onclick="toggleMute()">🔊 ミュート</button>
-
-<div style="position: relative; display: inline-block;">
-
-  <canvas id="wheel" width="500" height="500"></canvas>
-
-  <!-- 右の針 -->
-  <div style="
-    position: absolute;
-    top: 50%;
-    right: -20px;
-    transform: translateY(-50%);
-    width: 0;
-    height: 0;
-    border-top: 15px solid transparent;
-    border-bottom: 15px solid transparent;
-    border-left: 30px solid red;
-  "></div>
-
+<div class="controls">
+  <button onclick="startRoulette()">START</button>
+  <button onclick="toggleMute()" id="muteBtn">🔊</button>
 </div>
 
-<div id="result"></div>
+<div id="wrapper" style="position:relative; display:inline-block;">
+  <canvas id="wheel" width="500" height="500"></canvas>
+  <div class="pointer"></div>
+  <div class="resultBox" id="resultBox"></div>
+</div>
 
-<p class="note">
-※結果はランダムであり、偏りが出る場合があります。
-</p>
-
-<textarea id="items" placeholder="改行で入力"></textarea>
+<textarea id="items" placeholder="改行で入力" style="width:80%; height:100px;"></textarea>
 
 <audio id="rollSound" src="roll.mp3"></audio>
 <audio id="hitSound" src="finish.mp3"></audio>
@@ -92,12 +95,17 @@ let muted = false;
 
 const rollSound = document.getElementById("rollSound");
 const hitSound = document.getElementById("hitSound");
+const resultBox = document.getElementById("resultBox");
+const muteBtn = document.getElementById("muteBtn");
 
+// 音量
 rollSound.volume = 0.5;
 hitSound.volume = 0.5;
 
-// 初期表示（無色）
-function drawEmpty() {
+// 初期
+drawEmpty();
+
+function drawEmpty(){
   ctx.clearRect(0,0,500,500);
   ctx.beginPath();
   ctx.fillStyle = "#1e293b";
@@ -105,15 +113,13 @@ function drawEmpty() {
   ctx.fill();
 }
 
-drawEmpty();
-
-// 入力で即反映
+// 入力連動
 document.getElementById("items").addEventListener("input", () => {
   items = document.getElementById("items").value.split("\n").filter(v=>v);
   drawWheel();
 });
 
-function drawWheel() {
+function drawWheel(){
   if(items.length === 0){
     drawEmpty();
     return;
@@ -121,13 +127,13 @@ function drawWheel() {
 
   ctx.clearRect(0,0,500,500);
 
-  const arc = 2 * Math.PI / items.length;
+  const arc = 2*Math.PI / items.length;
 
   for(let i=0;i<items.length;i++){
     ctx.beginPath();
-    ctx.fillStyle = `hsl(${i * 360 / items.length}, 70%, 50%)`;
+    ctx.fillStyle = `hsl(${i*360/items.length},70%,50%)`;
     ctx.moveTo(250,250);
-    ctx.arc(250,250,250, i*arc + angle, (i+1)*arc + angle);
+    ctx.arc(250,250,250,i*arc+angle,(i+1)*arc+angle);
     ctx.fill();
 
     ctx.fillStyle = "#000";
@@ -138,27 +144,28 @@ function drawWheel() {
     ctx.translate(250,250);
     ctx.rotate(i*arc + arc/2 + angle);
 
-    ctx.strokeText(items[i], 160, 5);
-    ctx.fillText(items[i], 160, 5);
+    ctx.strokeText(items[i],150,5);
+    ctx.fillText(items[i],150,5);
 
     ctx.restore();
   }
 }
 
-function startRoulette() {
+function startRoulette(){
   if(spinning) return;
-  if(items.length === 0) return alert("項目を入力してください");
+  if(items.length === 0) return alert("項目を入力");
 
   spinning = true;
+  resultBox.style.display = "none";
 
   if(!muted){
     rollSound.currentTime = 0;
-    rollSound.play();
+    rollSound.play().catch(()=>{});
   }
 
-  let speed = Math.random() * 0.6 + 0.6;
+  let speed = Math.random()*0.6 + 0.6;
 
-  function spin() {
+  function spin(){
     angle += speed;
     speed *= 0.985;
 
@@ -168,16 +175,22 @@ function startRoulette() {
       requestAnimationFrame(spin);
     } else {
       spinning = false;
-      rollSound.pause();
-      if(!muted) hitSound.play();
 
-      // ★ここがズレ修正の本体
+      rollSound.pause();
+      if(!muted){
+        hitSound.currentTime = 0;
+        hitSound.play().catch(()=>{});
+      }
+
+      // ★右針完全一致ロジック
+      const arc = 2*Math.PI / items.length;
       const adjusted = (angle) % (2*Math.PI);
       const index = Math.floor(
-        ((2*Math.PI - adjusted) / (2*Math.PI)) * items.length
+        ( (2*Math.PI - adjusted) / arc )
       ) % items.length;
 
-      document.getElementById("result").innerText = "結果：" + items[index];
+      resultBox.innerText = items[index];
+      resultBox.style.display = "block";
     }
   }
 
@@ -186,6 +199,7 @@ function startRoulette() {
 
 function toggleMute(){
   muted = !muted;
+  muteBtn.innerText = muted ? "🔇" : "🔊";
 }
 </script>
 
