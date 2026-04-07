@@ -14,10 +14,6 @@ body {
   text-align: center;
 }
 
-.container {
-  padding: 20px;
-}
-
 textarea {
   width: 90%;
   height: 120px;
@@ -27,7 +23,7 @@ textarea {
 }
 
 button {
-  margin-top: 15px;
+  margin-top: 10px;
   padding: 12px 20px;
   font-size: 18px;
   background: #22c55e;
@@ -36,14 +32,19 @@ button {
   cursor: pointer;
 }
 
-canvas {
+#wheelWrapper {
+  position: relative;
+  display: inline-block;
   margin-top: 20px;
+}
+
+canvas {
   border-radius: 50%;
 }
 
 #result {
   margin-top: 20px;
-  font-size: 26px;
+  font-size: 28px;
   font-weight: bold;
 }
 </style>
@@ -51,42 +52,39 @@ canvas {
 
 <body>
 
-<div class="container">
-
 <h2>ルーレットツール</h2>
 
 <textarea id="items" placeholder="改行で項目を入力"></textarea>
 
 <br>
 <button onclick="startRoulette()">START</button>
+<button onclick="toggleMute()">🔊 ミュート</button>
 
 <br>
 <input type="file" id="bgUpload" accept="image/*">
 
-<br>
+<div id="wheelWrapper">
 
-<div style="position: relative; display: inline-block;">
-  <canvas id="wheel" width="300" height="300"></canvas>
+  <!-- ルーレット -->
+  <canvas id="wheel" width="500" height="500"></canvas>
 
-  <!-- 針（当選位置） -->
+  <!-- 針（右） -->
   <div style="
     position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 50%;
+    right: -15px;
+    transform: translateY(-50%) rotate(90deg);
     width: 0;
     height: 0;
-    border-left: 12px solid transparent;
-    border-right: 12px solid transparent;
-    border-bottom: 20px solid red;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-bottom: 25px solid red;
   "></div>
+
 </div>
 
 <div id="result"></div>
 
-</div>
-
-<!-- ローカル音声 -->
 <audio id="rollSound" src="roll.mp3"></audio>
 <audio id="hitSound" src="finish.mp3"></audio>
 
@@ -97,60 +95,78 @@ const ctx = canvas.getContext("2d");
 let items = [];
 let angle = 0;
 let spinning = false;
+let muted = false;
+
+// 音量設定
+const rollSound = document.getElementById("rollSound");
+const hitSound = document.getElementById("hitSound");
+
+rollSound.volume = 0.5;
+hitSound.volume = 0.5;
+
+// 入力と同時に更新
+document.getElementById("items").addEventListener("input", () => {
+  items = document.getElementById("items").value.split("\n").filter(v=>v);
+  drawWheel();
+});
 
 function drawWheel() {
   if(items.length === 0) return;
+
+  ctx.clearRect(0,0,500,500);
 
   const arc = 2 * Math.PI / items.length;
 
   for(let i=0;i<items.length;i++){
     ctx.beginPath();
     ctx.fillStyle = `hsl(${i * 360 / items.length}, 70%, 50%)`;
-    ctx.moveTo(150,150);
-    ctx.arc(150,150,150, i*arc + angle, (i+1)*arc + angle);
+    ctx.moveTo(250,250);
+    ctx.arc(250,250,250, i*arc + angle, (i+1)*arc + angle);
     ctx.fill();
 
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = "#000";
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 4;
+
     ctx.save();
-    ctx.translate(150,150);
+    ctx.translate(250,250);
     ctx.rotate(i*arc + arc/2 + angle);
-    ctx.fillText(items[i], 80, 5);
+
+    ctx.strokeText(items[i], 150, 5);
+    ctx.fillText(items[i], 150, 5);
+
     ctx.restore();
   }
 }
 
 function startRoulette() {
   if(spinning) return;
-
-  items = document.getElementById("items").value.split("\n").filter(v=>v);
   if(items.length === 0) return alert("項目を入力してください");
 
   spinning = true;
 
-  const rollSound = document.getElementById("rollSound");
-  const hitSound = document.getElementById("hitSound");
+  if(!muted){
+    rollSound.currentTime = 0;
+    rollSound.play();
+  }
 
-  rollSound.currentTime = 0;
-  rollSound.play();
-
-  let speed = Math.random() * 0.5 + 0.5; // 初速アップ
+  let speed = Math.random() * 0.5 + 0.6;
 
   function spin() {
     angle += speed;
-    speed *= 0.985; // 減速をゆるく（長く回る）
+    speed *= 0.985;
 
-    ctx.clearRect(0,0,300,300);
     drawWheel();
 
     if(speed > 0.002){
       requestAnimationFrame(spin);
     } else {
       spinning = false;
-      rollSound.pause();
-      hitSound.play();
 
-      // 針は上（-90度位置）
-      const normalized = (angle % (2*Math.PI));
+      rollSound.pause();
+      if(!muted) hitSound.play();
+
+      const normalized = (angle + Math.PI / 2) % (2 * Math.PI);
       const index = Math.floor((items.length - (normalized / (2*Math.PI)) * items.length) % items.length);
 
       document.getElementById("result").innerText = "結果：" + items[index];
@@ -160,14 +176,26 @@ function startRoulette() {
   spin();
 }
 
-// 背景画像
+// ミュート切り替え
+function toggleMute(){
+  muted = !muted;
+  document.querySelector("button[onclick='toggleMute()']").innerText = muted ? "🔇 ミュート中" : "🔊 ミュート";
+}
+
+// 背景画像（ちゃんと描画する）
 document.getElementById("bgUpload").addEventListener("change", function(e){
   const file = e.target.files[0];
   const reader = new FileReader();
+
   reader.onload = function(){
-    canvas.style.backgroundImage = `url(${reader.result})`;
-    canvas.style.backgroundSize = "cover";
+    const img = new Image();
+    img.onload = function(){
+      ctx.drawImage(img, 0, 0, 500, 500);
+      drawWheel();
+    }
+    img.src = reader.result;
   };
+
   reader.readAsDataURL(file);
 });
 </script>
