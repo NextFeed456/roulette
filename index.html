@@ -7,10 +7,34 @@
 <style>
 body {
   margin: 0;
-  background: #0f172a; /* 通常背景 */
+  background: #0f172a;
   color: white;
   text-align: center;
   font-family: sans-serif;
+}
+
+/* ナビ */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: #020617;
+  padding: 12px;
+  text-align: left;
+  z-index: 100;
+}
+
+.nav a {
+  color: #22c55e;
+  text-decoration: none;
+  font-weight: bold;
+  margin-left: 10px;
+}
+
+/* 全体余白 */
+.container {
+  margin-top: 60px;
 }
 
 /* OBS透過エリア */
@@ -18,7 +42,7 @@ body {
   display: inline-block;
   margin-top: 20px;
   padding: 20px;
-  background: #00ff00; /* クロマキー用（黄緑） */
+  background: #00ff00;
   position: relative;
 }
 
@@ -27,17 +51,15 @@ canvas {
   margin: auto;
 }
 
-/* 左針 */
+/* ▶ 右向き針 */
 .pointer {
   position: absolute;
   top: 50%;
-  left: -20px;
+  right: -25px;
   transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-top: 15px solid transparent;
-  border-bottom: 15px solid transparent;
-  border-right: 30px solid red;
+  font-size: 40px;
+  color: red;
+  font-weight: bold;
 }
 
 /* ボタン */
@@ -64,23 +86,30 @@ button {
   display: none;
 }
 
-/* 入力欄 */
-textarea {
-  width: 80%;
-  height: 100px;
-  margin-top: 20px;
-}
-
 /* 説明 */
 .desc {
   margin-top: 10px;
   font-size: 14px;
   opacity: 0.85;
 }
+
+/* 入力欄 */
+textarea {
+  width: 80%;
+  height: 100px;
+  margin-top: 10px;
+}
 </style>
 </head>
 
 <body>
+
+<!-- ナビ -->
+<div class="nav">
+  <a href="https://nextfeed456.github.io/">← トップページへ</a>
+</div>
+
+<div class="container">
 
 <h2>ルーレットツール</h2>
 
@@ -94,13 +123,13 @@ textarea {
   <button onclick="toggleMute()" id="muteBtn">🔊</button>
 </div>
 
-<!-- OBS透過エリア -->
+<!-- ルーレット -->
 <div id="wrapper">
 
   <canvas id="wheel" width="500" height="500"></canvas>
 
-  <!-- 左針 -->
-  <div class="pointer"></div>
+  <!-- ▶ -->
+  <div class="pointer">▶</div>
 
   <!-- 結果 -->
   <div id="resultBox" class="resultBox"></div>
@@ -111,10 +140,21 @@ textarea {
 ※完全ランダムのため結果に偏りが出る場合があります。
 </p>
 
-<textarea id="items" placeholder="改行で入力"></textarea>
+<!-- 入力説明 -->
+<p class="desc">
+以下のボックスに入力してください。<br>
+改行でルーレットの内容を分割できます。
+</p>
+
+<textarea id="items" placeholder="例：
+A
+B
+C"></textarea>
 
 <audio id="rollSound" src="roll.mp3"></audio>
 <audio id="hitSound" src="finish.mp3"></audio>
+
+</div>
 
 <script>
 const canvas = document.getElementById("wheel");
@@ -144,7 +184,7 @@ function drawEmpty(){
   ctx.fill();
 }
 
-// 入力で反映
+// 入力反映
 document.getElementById("items").addEventListener("input", () => {
   items = document.getElementById("items").value.split("\n").filter(v=>v);
   drawWheel();
@@ -213,9 +253,10 @@ function startRoulette(){
         hitSound.play().catch(()=>{});
       }
 
-      // ★左針対応
+      // ▶（右）基準
       const arc = 2*Math.PI / items.length;
-      const adjusted = (angle + Math.PI) % (2*Math.PI);
+      const adjusted = angle % (2*Math.PI);
+
       const index = Math.floor(
         ( (2*Math.PI - adjusted) / arc )
       ) % items.length;
