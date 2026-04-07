@@ -39,13 +39,11 @@ button {
 canvas {
   margin-top: 20px;
   border-radius: 50%;
-  background-size: cover;
-  background-position: center;
 }
 
 #result {
   margin-top: 20px;
-  font-size: 24px;
+  font-size: 26px;
   font-weight: bold;
 }
 </style>
@@ -66,15 +64,31 @@ canvas {
 <input type="file" id="bgUpload" accept="image/*">
 
 <br>
-<canvas id="wheel" width="300" height="300"></canvas>
+
+<div style="position: relative; display: inline-block;">
+  <canvas id="wheel" width="300" height="300"></canvas>
+
+  <!-- 針（当選位置） -->
+  <div style="
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 20px solid red;
+  "></div>
+</div>
 
 <div id="result"></div>
 
 </div>
 
-<!-- 音 -->
-<audio id="rollSound" src="https://www.soundjay.com/misc/sounds/drum-roll-1.mp3"></audio>
-<audio id="hitSound" src="https://www.soundjay.com/button/sounds/button-3.mp3"></audio>
+<!-- ローカル音声 -->
+<audio id="rollSound" src="roll.mp3"></audio>
+<audio id="hitSound" src="finish.mp3"></audio>
 
 <script>
 const canvas = document.getElementById("wheel");
@@ -119,11 +133,11 @@ function startRoulette() {
   rollSound.currentTime = 0;
   rollSound.play();
 
-  let speed = Math.random() * 0.3 + 0.3;
+  let speed = Math.random() * 0.5 + 0.5; // 初速アップ
 
   function spin() {
     angle += speed;
-    speed *= 0.98;
+    speed *= 0.985; // 減速をゆるく（長く回る）
 
     ctx.clearRect(0,0,300,300);
     drawWheel();
@@ -135,7 +149,10 @@ function startRoulette() {
       rollSound.pause();
       hitSound.play();
 
-      const index = Math.floor((items.length - (angle / (2*Math.PI)) * items.length) % items.length);
+      // 針は上（-90度位置）
+      const normalized = (angle % (2*Math.PI));
+      const index = Math.floor((items.length - (normalized / (2*Math.PI)) * items.length) % items.length);
+
       document.getElementById("result").innerText = "結果：" + items[index];
     }
   }
@@ -143,12 +160,13 @@ function startRoulette() {
   spin();
 }
 
-// 背景画像アップロード
+// 背景画像
 document.getElementById("bgUpload").addEventListener("change", function(e){
   const file = e.target.files[0];
   const reader = new FileReader();
   reader.onload = function(){
     canvas.style.backgroundImage = `url(${reader.result})`;
+    canvas.style.backgroundSize = "cover";
   };
   reader.readAsDataURL(file);
 });
